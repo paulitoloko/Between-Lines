@@ -32,8 +32,7 @@ void getCurrentSongBlocking() {//for if error occurs.
 
 
     if (WiFi.status() != WL_CONNECTED) {
-        // Do not reset the radio from the 4-second poll. Auto-reconnect stays
-        // enabled, while the lyric clock continues from its last valid value.
+      
         Serial.println("WiFi unavailable; keeping local lyric clock");
         return;
     }
@@ -91,8 +90,7 @@ void getCurrentSongBlocking() {//for if error occurs.
             doc["item"]["artists"][0]["name"].as<String>();
 
         // Spotify normally returns images as 640, 300 and 64 px. Use the
-        // 300 px version: it is the right source for a 128x128 TFT and does
-        // not consume the memory required by the 640 px original.
+        // 300 px version: it is the right source for a 128x128 TFT and does not consume the memory required for the 640 px original.
         String cover =
             doc["item"]["album"]["images"][1]["url"].as<String>();
         if (cover == "") {
@@ -118,14 +116,13 @@ void getCurrentSongBlocking() {//for if error occurs.
 
             lastTrackId = songID;
 
-            // Reset lyric state when the track changes
+         
             lyricCount = 0;
             currentLyric = -1;
             totalPages = 0;
             currentPage = 0;
 
-            // Make the new track visible immediately. The cover download can
-            // take time, but it no longer delays title/artist feedback.
+        
             updateSpotifyDisplay(title, artist);
             showMessage("Loading cover", "");
             delay(1);
@@ -140,9 +137,7 @@ void getCurrentSongBlocking() {//for if error occurs.
 
         }
 
-        // Pause/resume detection, independent of whether
-        // the track changed. It is applied as soon as polling data arrives,
-        // with no additional software delay.
+      
         if (!isPlaying && wasPlaying) {
 
             Serial.println("Stopped");
@@ -152,8 +147,7 @@ void getCurrentSongBlocking() {//for if error occurs.
         else if (isPlaying && !wasPlaying) {
 
             Serial.println("RESUMED");
-            // Immediately restore the last displayed lyric/page,
-            // without waiting for the normal page-change timing.
+         
             showPage();
 
         }
@@ -163,22 +157,16 @@ void getCurrentSongBlocking() {//for if error occurs.
 
     }
     else if (code == 204) {
-
-        // There is no active playback (this is not a real error)
         Serial.println("NO ACTIVE PLAYBACK");
         isPlaying = false;
-
         if (wasPlaying) {
             showMessage("No playback", "");
         }
-
         wasPlaying = false;
         spotifyNetworkFailures = 0;
 
     }
     else {
-        // Keep rendering and the local lyric clock alive on a transient poll
-        // failure. WiFi auto-reconnect handles genuine link loss.
         Serial.printf("Spotify sync error: %d\n", code);
         ++spotifyNetworkFailures;
     }
@@ -189,8 +177,7 @@ void getCurrentSongBlocking() {//for if error occurs.
 }
 
 void getCurrentSong() {
-    // Apply the player result directly. The previous background hand-off
-    // could leave seek and track changes unapplied on this board.
+ 
     getCurrentSongBlocking();
 }
 
@@ -212,9 +199,7 @@ void spotifyPollTask(void* parameter) {
         if (accessToken == "") {
             result.status = -1;
         } else if (WiFi.status() != WL_CONNECTED) {
-            // WiFi auto-reconnect remains enabled. Do not reset the radio from
-            // this background poll: a weak transient link must not disturb
-            // lyric rendering or start a reconnection loop.
+
             result.status = -2;
         } else {
             WiFiClientSecure client;
@@ -298,8 +283,6 @@ void applyPendingSpotifyUpdate() {
     }
 
     if (update.status != HTTP_CODE_OK || !update.hasTrack) {
-        // Do not flood the serial monitor during a weak WiFi period. The
-        // lyric clock keeps using its last valid Spotify progress value.
         static int lastReportedStatus = 0;
         static unsigned long lastReportAt = 0;
         if (update.status != lastReportedStatus || millis() - lastReportAt >= 30000UL) {
@@ -309,8 +292,6 @@ void applyPendingSpotifyUpdate() {
         }
         return;
     }
-
-    // Updating these values is fast and immediately corrects seek forward/back.
     progressMs = update.progress;
     durationMs = update.duration > 0 ? update.duration : 1;
     isPlaying = update.playing;
