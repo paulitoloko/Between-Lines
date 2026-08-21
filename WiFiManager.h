@@ -13,7 +13,7 @@ void connectWiFi() {
     WiFi.setSleep(false);
     WiFi.setAutoReconnect(true);
     WiFi.persistent(false);
-    // Clear stale association data; the configured credentials are supplied below.
+
     WiFi.disconnect(false, true);
     delay(250);
 
