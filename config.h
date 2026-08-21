@@ -20,3 +20,4 @@ const char* REFRESH_TOKEN = " ";
 #define TFT_RST  4
 #define TFT_MOSI 23
 #define TFT_SCLK 18
+//for obious reasons there isn't any wifi, wifi password, or spotify API tokens.
