@@ -4,7 +4,7 @@ constexpr uint8_t LCD_UNUSED_ROW = 2;
 constexpr uint8_t LCD_PROGRESS_ROW = 3;
 constexpr size_t LCD_COLUMNS = 20;
 
-// Prints exactly one bounded LCD row. No character can flow into another row.
+
 void writeLcdLine(uint8_t row, const String& text) {
     lcd.setCursor(0, row);
     const size_t longitud = text.length() < LCD_COLUMNS ? text.length() : LCD_COLUMNS;
@@ -26,8 +26,6 @@ void showMessage(String line1, String line2) {
 void showPage() {
     if (totalPages == 0 || currentPage < 0 || currentPage >= totalPages) return;
 
-    // Lyrics are limited to rows 0 and 1. Clear row 2 on each update so
-    // no previous text can remain there; row 3 belongs only to progress.
     writeLcdLine(LCD_LETTER_ROW_1, pageLine1[currentPage]);
     writeLcdLine(LCD_LETTER_ROW_2, pageLine2[currentPage]);
     writeLcdLine(LCD_UNUSED_ROW, "");
@@ -36,8 +34,7 @@ void updateSynchronizedPage(int lyricIndex, unsigned long currentTime) {
     if (totalPages <= 1 || lyricIndex < 0 || lyricIndex >= lyricCount) return;
 
     const unsigned long lineStart = lyricTimes[lyricIndex];
-    // The next LRC timestamp defines the real reading window for this line.
-    // A short fallback is used only for the final lyric, where no next mark exists.
+    
     const unsigned long lineEnd = (lyricIndex + 1 < lyricCount)
                                   ? lyricTimes[lyricIndex + 1]
                                   : lineStart + 6000UL;
@@ -94,12 +91,9 @@ void updateCurrentLyric(unsigned long currentTime) {
         Serial.println(lyricLines[line]);
         splitLyricIntoPages(lyricLines[line]);
     }
-
-    // Re-evaluate on every loop. Seeking forward/backward immediately selects
-    // the page that belongs to the actual player position.
     updateSynchronizedPage(line, currentTime);
 }
-// Adds one finished 20x2 page without moving text into the next page.
+
 bool saveLyricPage(const char* line1, const char* line2) {
     if (totalPages >= 40) return false;
 
@@ -119,8 +113,7 @@ void splitLyricIntoPages(const String& originalLyric) {
     totalPages = 0;
     currentPage = 0;
 
-    // Read the lyric in place. Unlike the earlier version, this never removes
-    // text from a String while it is being tokenized.
+
     const char* text = originalLyric.c_str();
     size_t start = 0;
     size_t end = originalLyric.length();
@@ -142,8 +135,7 @@ void splitLyricIntoPages(const String& originalLyric) {
         const size_t wordEnd = position;
         size_t wordPosition = wordStart;
 
-        // Each character is consumed only from left to right. A word changes
-        // line or page only when it does not fit in the current destination.
+
         while (wordPosition < wordEnd) {
             char* destination = (currentLine == 1) ? line1 : line2;
             const size_t destinationLength = strlen(destination);
@@ -151,9 +143,7 @@ void splitLyricIntoPages(const String& originalLyric) {
             const size_t separator = (!continuingWord && destinationLength > 0) ? 1 : 0;
             const size_t pendingCharacters = wordEnd - wordPosition;
 
-            // A full line cannot accept a separator. Calculate the available
-            // space only after this check, preventing unsigned underflow and
-            // any write beyond the 20-character LCD buffer.
+           
             if (destinationLength >= LCD_COLUMNS) {
                 if (currentLine == 1) {
                     currentLine = 2;
@@ -181,8 +171,7 @@ void splitLyricIntoPages(const String& originalLyric) {
             }
 
             if (destinationLength == 0) {
-                // A single word longer than the LCD is split only by necessity,
-                // retaining its original character order across the next line.
+     
                 const size_t fragment = pendingCharacters < LCD_COLUMNS ? pendingCharacters : LCD_COLUMNS;
                 memcpy(destination, text + wordPosition, fragment);
                 destination[fragment] = '\0';
@@ -190,8 +179,7 @@ void splitLyricIntoPages(const String& originalLyric) {
                 continue;
             }
 
-            // Do not rotate or copy a previous line. Advance to the next line,
-            // or save the complete page and begin a new empty one.
+
             if (currentLine == 1) {
                 currentLine = 2;
             } else {
@@ -230,7 +218,7 @@ void drawProgressBar(unsigned long elapsed, unsigned long total) {
     int filled = map(percentage, 0, 100, 0, 20);
 
     // The fourth physical row is reserved exclusively for progress blocks,
-    // never for lyric characters.
+  
     lcd.setCursor(0, LCD_PROGRESS_ROW);
 
     for (int i = 0; i < 20; i++) {
@@ -243,6 +231,6 @@ void drawProgressBar(unsigned long elapsed, unsigned long total) {
         }
     }
 }
-// ---- Physical button control ----
+
 
 
