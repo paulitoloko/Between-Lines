@@ -1,6 +1,3 @@
-// Extracted unchanged from esp32_spotify_english.ino.
-// Module: LyricsService.h
-
 String urlEncode(String str) {
 
     String encoded = "";
@@ -124,13 +121,6 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
 
     lyricCount = 0;
     currentLyric = -1;
-
-    // ---------- Step 1: exact match with /api/get ----------
-    // Small payload (one result) and more precise: it uses the title,
-    // artist, album, and exact duration already available from Spotify.
-    // Because it is a small JSON response, it is much more robust against
-    // memory fragmentation that may remain after downloading
-    // large covers.
     {
         HTTPClient http;
 
@@ -178,8 +168,6 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
                     http.end();
                     return;
                 }
-                // If execution reaches here, the exact match did not contain usable lyrics.
-                // Continue with step 2 (search).
             }
             else {
                 Serial.print("JSON ERROR (exact get): ");
@@ -190,7 +178,6 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
         http.end();
     }
 
-    // ---------- Step 2: fallback with /api/search ----------
     HTTPClient http;
 
     String url = "https://lrclib.net/api/search?q="
@@ -198,8 +185,7 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
 
     http.begin(url);
 
-    // LRCLIB recommends identifying the client; without this, traffic may
-    // be filtered/limited and valid JSON may not be received.
+
     http.addHeader("User-Agent", "ESP32-SpotifyDisplay/1.0 (contacto@ejemplo.com)");
 
     int code = http.GET();
@@ -212,12 +198,6 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
         String payload = http.getString();
 
         JsonDocument doc;
-
-        // (Note: direct stream parsing was tested to avoid allocating
-        // a large String, but LRCLIB sometimes responds with
-        // chunked transfer encoding and the raw stream contains
-        // chunk markers mixed with JSON. getString() does
-        // decode that correctly, so it is kept.)
         DeserializationError err = deserializeJson(doc, payload);
 
         if (err) {
@@ -236,11 +216,6 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
 
             String plain = "";
             String synced = "";
-
-            // Iterate through results looking for the first clean candidate:
-            // prefer syncedLyrics; otherwise use plainLyrics that does not
-            // appear to contain corrupt data (some community submissions
-            // contain data such as "start_ms:.. end_ms:.. - text:..")
             for (JsonObject candidato : doc.as<JsonArray>()) {
 
                 String candSynced = "";
@@ -263,7 +238,7 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
                     candPlain.indexOf("start_ms:") == -1 &&
                     candPlain.indexOf("end_ms:") == -1) {
                     plain = candPlain; // valid candidate; continue
-                                        // searching in case a synchronized version appears
+                                       
                 }
             }
 
@@ -281,7 +256,7 @@ void getLyrics(String title, String artist, String album, unsigned long trackDur
                 Serial.println("PLAIN LYRICS FOUND (not synchronized):");
                 Serial.println(lyrics);
 
-                // No timestamps -> display the complete lyric at once
+               
                 splitLyricIntoPages(lyrics);
             }
             else {
