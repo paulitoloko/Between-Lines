@@ -41,16 +41,10 @@ String pageLine2[40];
 int totalPages = 0;
 int currentPage = 0;
 
-// Long lyric pages are selected from the current LRC time, not from a
-// fixed wall-clock delay. This keeps each transition aligned to the song.
-
 unsigned long lastLocalTick = 0;
 
-// Positive values show the lyric slightly earlier; negative values delay it.
-// Start with 200 ms to compensate normal HTTPS/player response latency.
 const long OFFSET_MS = 200;
-// One player-state request every 4 s (15/min) is a conservative balance:
-// tighter than the original 5 s while avoiding an aggressive polling rate.
+
 const unsigned long SPOTIFY_POLL_INTERVAL_MS = 4000;
 unsigned long lastSpotifyPoll = 0;
 
@@ -59,9 +53,6 @@ unsigned long durationMs = 1;
 bool isPlaying = false;
 bool wasPlaying = false;
 uint8_t spotifyNetworkFailures = 0;
-
-// Spotify networking runs on a separate task. The main loop remains the only
-// task that writes to the LCD/TFT, so lyrics never pause during an HTTPS poll.
 struct SpotifyUpdate {
     bool ready;
     int status;
@@ -93,12 +84,14 @@ unsigned long lastPressPause = 0;
 unsigned long lastPressNext  = 0;
 unsigned long lastPressPrev  = 0;
 unsigned long lastPressPower = 0;
-// --------------------------
+
 int lastStatePause = HIGH;
 int lastStateNext  = HIGH;
 int lastStatePrev  = HIGH;
 int lastStatePower = HIGH;
-// ---- Function prototypes (forward declarations) ----
+
+
+
 void showSongInfo(String title, String artist);
 void drawCover(String url);
 void updateSpotifyDisplay(String title, String artist);
@@ -140,11 +133,6 @@ void setup() {
     currentPage = 0;
     totalPages = 0;
     Serial.begin(115200);
-    // The ESP32 TLS stack may log an EOF even after a completed HTTP response.
-    // Keep those internal messages out of the monitor; functional errors are
-    // still reported by this firmware in a rate-limited way.
-    // Suppress framework-only logs; this firmware still reports real request
-    // failures itself without flooding the serial monitor.
     esp_log_level_set("*", ESP_LOG_NONE);
     esp_log_level_set("ssl_client", ESP_LOG_NONE);
     esp_log_level_set("WiFiClientSecure", ESP_LOG_NONE);
@@ -171,10 +159,6 @@ void setup() {
 
     tft.initR(INITR_BLACKTAB);
     tft.setRotation(2);
-
-
-    // The medium Spotify image is 300 px; 1/2 scale gives a 150 px image,
-    // then drawCover() centre-crops it to the 128x128 TFT cover area.
     TJpgDec.setJpgScale(2);
     TJpgDec.setCallback(tftOutput);
 
@@ -187,10 +171,7 @@ void setup() {
     Serial.println("BEFORE TOKEN");
 
     accessToken = getAccessToken();
-    // Direct, bounded polling is used for reliable seek and track detection.
-
     Serial.println("AFTER TOKEN");
-
     Serial.println(accessToken != "" ? "Spotify token ready" : "Spotify token unavailable");
     delay(1000);
     lastTrackId = "";
@@ -198,12 +179,8 @@ void setup() {
 }
 
 void loop() {
-    // Apply network results on the display task before drawing this frame.
     applyPendingSpotifyUpdate();
     handleButtons();
-
-    // Re-sync from Spotify every 4 s instead of every 5 s. This reduces
-    // drift while keeping player-state requests conservative.
     if (millis() - lastSpotifyPoll > SPOTIFY_POLL_INTERVAL_MS) {
         getCurrentSong();
         lastSpotifyPoll = millis();
