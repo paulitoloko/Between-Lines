@@ -30,10 +30,10 @@ void spotifyPlay() {//middle button response, if already paused, resume playback
 
     http.end();
 
-    // Immediate feedback: restore the current lyric instantly
+
     isPlaying = true;
     wasPlaying = true;
-    lastLocalTick = millis(); // prevents an unusual jump in the progress bar
+    lastLocalTick = millis();
     showPage();
 }
 
@@ -52,11 +52,7 @@ void spotifyNext() {//right button response
     Serial.println(code);
 
     http.end();
-
     showMessage("Next", "song...");
-
-    // Small delay so Spotify can register the track change
-    // before refreshing, instead of waiting for the normal poll.
     delay(100);
     getCurrentSong();
     lastSpotifyPoll = millis(); // restart the polling cycle from here
@@ -90,33 +86,31 @@ void spotifyPrevious() {//left button response
 // Turn off displays, disconnect Wi-Fi, and enter deep sleep. The power button
 // (BTN_POWER, pin 20) is configured as a wake source: when pressed again,
 // the ESP32 fully restarts and executes setup() again
-// (this chip has no true low-consumption standby that retains RAM,
-// so deep sleep plus reboot is used).
 void enterStandby() {//left side button response
 
     Serial.println("ENTERING STANDBY...");
 
-    // Wait for the button to be released
+
     while (digitalRead(BTN_POWER) == LOW) {
         delay(10);
     }
 
     delay(200);
 
-    // Turn off the displays
-    tft.fillScreen(ST77XX_BLACK);
+
+    tft.fillScreen(ST77XX_BLACK);    // Turn off the displays
     lcd.clear();
     lcd.noBacklight();
 
-    // Disconnect from the network
+
     WiFi.disconnect(true);
     delay(100);
 
-    // Enable RTC pull resistors
+
     rtc_gpio_pullup_en((gpio_num_t)BTN_POWER);
     rtc_gpio_pulldown_dis((gpio_num_t)BTN_POWER);
 
-    // The ESP32 wakes when the pin transitions to LOW
+    
     esp_sleep_enable_ext0_wakeup((gpio_num_t)BTN_POWER, 0);
 
     delay(100);
